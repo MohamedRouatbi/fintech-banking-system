@@ -1,7 +1,8 @@
 import { Module, MiddlewareConsumer, NestModule } from '@nestjs/common';
-import { ConfigModule } from '@nestjs/config';
+import { ConfigModule, ConfigService } from '@nestjs/config';
 import { APP_GUARD } from '@nestjs/core';
 import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
+import { BullModule } from '@nestjs/bull';
 import { AuthModule } from './modules/auth/auth.module';
 import { UsersModule } from './modules/users/users.module';
 import { TransactionsModule } from './modules/transactions/transactions.module';
@@ -9,6 +10,7 @@ import { WalletsModule } from './modules/wallets/wallets.module';
 import { BrokersModule } from './modules/brokers/brokers.module';
 import { FireblocksModule } from './modules/fireblocks/fireblocks.module';
 import { SecurityModule } from './modules/security/security.module';
+import { LedgerModule } from './modules/ledger/ledger.module';
 import { AuditLogMiddleware } from './common/middleware/audit-log.middleware';
 import { AuditService } from './common/services/audit.service';
 
@@ -17,6 +19,19 @@ import { AuditService } from './common/services/audit.service';
     ConfigModule.forRoot({
       isGlobal: true,
       envFilePath: '.env',
+    }),
+    // BullMQ for async job processing
+    BullModule.forRootAsync({
+      imports: [ConfigModule],
+      useFactory: async (configService: ConfigService) => ({
+        redis: {
+          host: configService.get('REDIS_HOST') || 'localhost',
+          port: configService.get('REDIS_PORT') || 6379,
+          password: configService.get('REDIS_PASSWORD'),
+          db: configService.get('REDIS_DB') || 0,
+        },
+      }),
+      inject: [ConfigService],
     }),
     // Rate limiting
     ThrottlerModule.forRoot([{
@@ -39,6 +54,7 @@ import { AuditService } from './common/services/audit.service';
     BrokersModule,
     FireblocksModule,
     SecurityModule,
+    LedgerModule,
   ],
   controllers: [],
   providers: [
