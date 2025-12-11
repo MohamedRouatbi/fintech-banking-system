@@ -1,4 +1,5 @@
-import { IsEmail, IsNotEmpty, IsString, IsOptional, MinLength } from 'class-validator';
+import { IsEmail, IsNotEmpty, IsString, IsOptional, MinLength, IsEnum, IsArray } from 'class-validator';
+import { UserRole } from '../../../common/interfaces/user.interface';
 
 export class CreateUserDto {
   @IsEmail()
@@ -25,4 +26,9 @@ export class CreateUserDto {
   @IsString()
   @IsOptional()
   address?: string;
+
+  @IsArray()
+  @IsEnum(UserRole, { each: true })
+  @IsOptional()
+  roles?: UserRole[];
 }

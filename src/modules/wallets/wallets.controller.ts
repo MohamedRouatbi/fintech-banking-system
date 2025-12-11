@@ -9,18 +9,31 @@ import {
   ParseIntPipe,
 } from '@nestjs/common';
 import { WalletsService, WalletType, WalletStatus } from './wallets.service';
+import { AuditService, AuditAction } from '../../common/services/audit.service';
+import { CurrentUser } from '../../common/decorators/current-user.decorator';
 
 @Controller('wallets')
 export class WalletsController {
-  constructor(private readonly walletsService: WalletsService) {}
+  constructor(
+    private readonly walletsService: WalletsService,
+    private readonly auditService: AuditService,
+  ) {}
 
   @Post()
-  create(
+  async create(
     @Body('userId') userId: number,
     @Body('currency') currency: string,
     @Body('type') type: WalletType,
+    @CurrentUser('sub') currentUserId: number,
   ) {
-    return this.walletsService.create(userId, currency, type);
+    const result = await this.walletsService.create(userId, currency, type);
+    this.auditService.logSuccess(
+      AuditAction.WALLET_CREATED,
+      currentUserId,
+      { walletId: result.id, currency, type },
+      result.id,
+    );
+    return result;
   }
 
   @Get()
@@ -39,18 +52,34 @@ export class WalletsController {
   }
 
   @Patch(':id/balance')
-  updateBalance(
+  async updateBalance(
     @Param('id', ParseIntPipe) id: number,
     @Body('amount') amount: number,
+    @CurrentUser('sub') currentUserId: number,
   ) {
-    return this.walletsService.updateBalance(id, amount);
+    const result = await this.walletsService.updateBalance(id, amount);
+    this.auditService.logSuccess(
+      AuditAction.WALLET_BALANCE_UPDATED,
+      currentUserId,
+      { walletId: id, amount, newBalance: result.balance },
+      id,
+    );
+    return result;
   }
 
   @Patch(':id/status')
-  updateStatus(
+  async updateStatus(
     @Param('id', ParseIntPipe) id: number,
     @Body('status') status: WalletStatus,
+    @CurrentUser('sub') currentUserId: number,
   ) {
-    return this.walletsService.updateStatus(id, status);
+    const result = await this.walletsService.updateStatus(id, status);
+    this.auditService.logSuccess(
+      AuditAction.WALLET_STATUS_CHANGED,
+      currentUserId,
+      { walletId: id, newStatus: status },
+      id,
+    );
+    return result;
   }
 }
